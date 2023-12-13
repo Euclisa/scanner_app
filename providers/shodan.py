@@ -7,13 +7,13 @@ from error import raise_error
 class Shodan:
 
     def __init__(self, api_key: str):
-        logger = logging.getLogger('Shodan')
-        logger.setLevel(logging.DEBUG)
+        self.logger = logging.getLogger('Shodan')
+        self.logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler()  # Output logs to console
         handler.setLevel(logging.DEBUG)  # Set the desired logging level for this handler
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        self.logger.addHandler(handler)
 
         self.api = shodan.Shodan(api_key)
 
