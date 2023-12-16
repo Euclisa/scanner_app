@@ -13,11 +13,13 @@ class Scanner:
 
     UPDATE_INT = 3600
     CONFIG_PATH = 'config.json'
-    ALL_TABLES = {"event_types","events","hosts","open_ports","tor"}
+    ALL_TABLES = {"event_types","events","edit_labels","hosts","open_ports","onion_routing_hosts","tor_exit_hosts"}
 
     def __init__(self):
         logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger()
+
+        self.onionoo = Onionoo()
 
         self._read_config()
 
@@ -100,12 +102,12 @@ class Scanner:
 
         return event_id
     
-    def _touch_host_addr(self, ip_addr, event_id):
+    def _touch_host_addr(self, ip_addr, event_id, edit_label):
         cur = self.conn.cursor()
 
-        data = {'ip_addr': ip_addr, 'last_modified': event_id}
-        sql = """INSERT INTO hosts (ip_addr, last_modified) VALUES (%(ip_addr)s, %(last_modified)s)
-                ON CONFLICT (ip_addr) DO UPDATE SET last_modified = EXCLUDED.last_modified"""
+        data = {'ip_addr': ip_addr, 'last_modified': event_id, 'edit_label': edit_label}
+        sql = """INSERT INTO hosts (ip_addr, last_modified_event, last_modified_label) VALUES (%(ip_addr)s, %(last_modified)s, %(edit_label)s)
+                ON CONFLICT (ip_addr) DO UPDATE SET last_modified_event = EXCLUDED.last_modified_event, last_modified_label = EXCLUDED.last_modified_label"""
         
         try:
             cur.execute(sql,data)
@@ -128,37 +130,123 @@ class Scanner:
             raise_error(self.logger,f"Could not touch open ports entry for {ip_addr}:{port}.",e)
 
         cur.close()
-        
+    
 
-    def fetch_onions(self):
-        relays = Onionoo.details()
+    def _insert_onion_routing(self, relay):
+        cur = self.conn.cursor()
+
+        relay_keys = list(relay.keys())
+        columns_str = ', '.join(relay_keys)
+        relay_keys_f = list(map(lambda x: f"%({x})s", relay_keys))
+        columns_vals_str = ', '.join(relay_keys_f)
+
+        sql = f"""INSERT INTO onion_routing_hosts 
+            ({columns_str})
+            VALUES ({columns_vals_str})"""
+        
+        
+        try:
+            cur.execute(sql,relay)
+        except Exception as e:
+            raise_error(self.logger,f"Couldn't update database from Onionoo.",e)
+        
+        cur.close()
+    
+
+    def _update_onion_routing(self, relay, event_id):
+        or_addr = relay['or_addr']
+        or_port = relay['or_port']
+        exit_addresses = relay.pop('exit_addresses',None)
+
+        self._touch_host_addr(relay['or_addr'],event_id,'OR')
 
         cur = self.conn.cursor()
 
-        event_id = self._create_tor_fetch_event()
+        cur.execute("BEGIN")
 
-        for relay in relays:
-            relay_keys = list(relay.keys())
-            columns_str = ', '.join(relay_keys)
-            relay_keys_f = list(map(lambda x: f"%({x})s", relay_keys))
-            columns_vals_str = ', '.join(relay_keys_f)
-            
-            self._touch_host_addr(relay['or_addr'],event_id)
-            self._touch_open_port(relay['or_addr'],relay['or_port'])
+        # Delete exit host with corresponding or address
 
-            sql = f"""INSERT INTO tor 
-                ({columns_str})
-                VALUES ({columns_vals_str})"""
-            
-            
-            try:
-                cur.execute(sql,relay)
-            except Exception as e:
-                raise_error(self.logger,f"Couldn't update database from Onionoo.",e)
+        sql = """DELETE FROM tor_exit_hosts WHERE or_addr = %s"""
+
+        try:
+            cur.execute(sql,(or_addr,))
+        except:
+            raise_error(self.logger,f"Could not delete tor exit hosts bound to {or_addr}.",e)
+
+        
+        # Delete onion-routing entry itself
+
+        sql = """DELETE FROM onion_routing_hosts WHERE or_addr = %s"""
+
+        try:
+            cur.execute(sql,(or_addr,))
+        except:
+            raise_error(self.logger,f"Could not delete onion-routing hosts with address '{or_addr}' for reinsertion.",e)
+        
+
+        # Finally, delete corresponding open_ports entry. All this for further reinsertion
+
+        sql = """DELETE FROM open_ports WHERE ip_addr = %s AND onion_routing IS TRUE"""
+        
+        try:
+            cur.execute(sql,(or_addr,))
+        except Exception as e:
+            raise_error(self.logger,f"Could not delete onion-routing open ports for {or_addr}.",e)
+    
+        
+        # Commence insertion in reverse order. Ports first.
+
+        sql = """INSERT INTO open_ports (ip_addr, port, onion_routing) VALUES (%s, %s, TRUE)"""
+
+        try:
+            cur.execute(sql,(or_addr,or_port))
+        except Exception as e:
+            raise_error(self.logger,f"Could not insert onion-routing open port '{ip_addr}:{port}'.",e)
+
+        
+        # Then onion-routing info
+
+        self._insert_onion_routing(relay)
+
+        # At last, reinsert exit addresses
+
+        if exit_addresses is not None:
+            for exit_addr in exit_addresses:
+                self._insert_tor_exit_host(exit_addr,or_addr,event_id)
+        
+
+        cur.execute('COMMIT')
+
+        cur.close()
+    
+
+    def _insert_tor_exit_host(self, exit_addr, or_addr, event_id):
+        cur = self.conn.cursor()
+
+        self._touch_host_addr(exit_addr,event_id,'TE')
+
+        sql = """INSERT INTO tor_exit_hosts (exit_addr, or_addr) VALUES (%s, %s)"""
+
+        try:
+            cur.execute(sql,(exit_addr, or_addr))
+        except Exception as e:
+            raise_error(self.logger,f"Could not touch tor exit information for '{exit_addr}'.",e)
         
         cur.close()
 
+
+    def fetch_onions(self):
+        relays = self.onionoo.details()
+        event_id = self._create_tor_fetch_event()
+
+        for relay in relays:
+            self._update_onion_routing(relay,event_id)
+
         self.conn.commit()
+    
+
+    def fetch_host_info_from_tor(self, ip_addr):
+        pass
     
 
 
