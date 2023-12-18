@@ -1,0 +1,22 @@
+{% extends 'header.html' %}
+
+{% block title %} Shodan {% endblock %}
+
+{% block content %}
+    {% if data %}
+        <ul>
+            {% for record in data %}
+                <li>
+                    <strong>IP Address:</strong> {{ record['ip_addr'] }}<br>
+                    <strong>Port:</strong> {{ record['ports'] }}<br>
+                    <strong>Country:</strong> {{ record['country'] }}<br>
+                    <strong>Nickname:</strong> {{ record['nickname'] }}<br>
+                    <strong>Contact:</strong> {{ record['running'] }}<br>
+                </li>
+                <br>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Таблица пуста.</p>
+    {% endif %}
+{% endblock %}

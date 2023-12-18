@@ -1,3 +1,4 @@
 allnodes.json
 config.json
 __pycache__/
+.env/

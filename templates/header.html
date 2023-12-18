@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shodan</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Shodan</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownDatabase" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    База данных
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdownDatabase">
+                    <a class="dropdown-item" href="{{ url_for('create_db') }}">Создать</a>
+                    <a class="dropdown-item" href="{{ url_for('delete_db') }}">Удалить</a>
+                </div>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownScanning" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Сканирование
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdownScanning">
+                    <a class="dropdown-item" href="{{ url_for('ip_search') }}">По IP-адресу</a>
+                    <a class="dropdown-item" href="{{ url_for('filter_search') }}">По фильтрам</a>
+                </div>
+            </li>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownDelete" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Удалить
+                </a>
+                <div class="dropdown-menu" aria-labelledby="navbarDropdownDelete">
+                    <a class="dropdown-item" href="{{ url_for('clear_ip') }}">IP-адрес</a>
+                    <a class="dropdown-item" href="{{ url_for('clear_tables') }}">Таблицы</a>
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    {% block content %}{% endblock %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.8/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+</html>

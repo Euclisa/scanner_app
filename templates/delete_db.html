@@ -1,0 +1,16 @@
+{% extends 'header.html' %}
+
+{% block title %} Shodan {% endblock %}
+
+{% block content %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <h1 class="text-center">Удаление базы данных</h1>
+                <form action="{{ url_for('delete_db') }}" method="POST" class="text-center">
+                    <button type="submit" class="btn btn-danger">Удалить базу данных</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
