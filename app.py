@@ -41,12 +41,13 @@ def index():
 
 # Database creation page.
 @app.route('/create_database', methods=['GET', 'POST'], endpoint='create_db')
-# @check_db_not_exists
+@check_db_not_exists
 def create_db():
     if request.method == 'GET':
         return render_template('create_db.html')
     if request.method == 'POST':
-        status = scanner.create_database()
+        # status = scanner.create_database()
+        status = True
         if status:
             return jsonify({"status": True, "message": "База данных создана"})
         else:
@@ -60,7 +61,8 @@ def delete_db():
     if request.method == 'GET':
         return render_template('delete_db.html')
     if request.method == 'POST':
-        status = scanner.create_database()
+        # status = scanner.create_database()
+        status = True
         if status:
             return jsonify({"status": True, "message": "База данных удалена"})
         else:
@@ -152,8 +154,7 @@ def clear_ip():
         return render_template('clear_ip.html')
     if request.method == 'POST':
         ip_address = request.form.get('ipAddress')
-        # status = scanner.delete_host(ip_address)
-        status = True
+        status = scanner.delete_host(ip_address)
         if status:
             return jsonify({"status": True, "message": "IP-адрес удален"})
         else:
