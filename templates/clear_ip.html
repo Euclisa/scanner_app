@@ -1,6 +1,6 @@
 {% extends 'header.html' %}
 
-{% block title %}{% endblock %}
+{% block title %} Scanner {% endblock %}
 
 {% block content %}
 
@@ -10,7 +10,8 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                }
+                },
+                body: JSON.stringify({ ip_addr: ipAddr }),
             })
 
             .then(response => response.json())

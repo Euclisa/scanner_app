@@ -1,0 +1,25 @@
+{% extends 'header.html' %}
+
+{% block title %} Scanner {% endblock %}
+
+{% block content %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <h1>Пополнить базу адресами из Tor Project</h1>
+                <form action="{{ url_for('mass_search') }}" method="POST">
+                    <button type="submit" class="btn btn-primary">Пополнить</button>
+                </form>
+
+                {% if message %}
+                    <div class="alert {% if 'не найден' in message %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show mt-3" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

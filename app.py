@@ -1,11 +1,8 @@
 from flask import Flask, render_template, redirect, url_for, request, jsonify
 import psycopg2
-from scanner import Scanner
+from scanner import scanner, Scanner
 
 app = Flask(__name__)
-scanner = Scanner()
-if not scanner.db_connect():
-    raise RuntimeError("Failed to connect to database.")
 
 
 # Decorator checking the existence of a database.
@@ -13,6 +10,7 @@ def check_db_exists(func):
     def wrapper(*args, **kwargs):
         if not scanner.db_initialized():
             return redirect(url_for('create_db'))
+        scanner.db_connect()
         
         return func(*args, **kwargs)
     return wrapper
@@ -22,6 +20,7 @@ def check_db_exists(func):
 def check_db_not_exists(func):
     def wrapper(*args, **kwargs):
         if scanner.db_initialized():
+            scanner.db_connect()
             return redirect(url_for('delete_db'))
             
         return func(*args, **kwargs)
@@ -46,8 +45,7 @@ def create_db():
     if request.method == 'GET':
         return render_template('create_db.html')
     if request.method == 'POST':
-        # status = scanner.create_database()
-        status = True
+        status = scanner.create_database()
         if status:
             return jsonify({"status": True, "message": "База данных создана"})
         else:
@@ -61,8 +59,8 @@ def delete_db():
     if request.method == 'GET':
         return render_template('delete_db.html')
     if request.method == 'POST':
-        # status = scanner.create_database()
-        status = True
+        status = scanner.drop_database()
+        #status = True
         if status:
             return jsonify({"status": True, "message": "База данных удалена"})
         else:
@@ -77,17 +75,30 @@ def ip_search():
     if request.method == 'POST':
         ip_address = request.form['ipAddress']
 
-        filtr = Scanner.select_filter()
-        filtr.add_ip_to_filter(ip_address)
+        entries_updated = scanner.fetch_host_info_from_tor(ip_address)
 
-        status = scanner.get_filtered_summary(filtr)
-
-        if status:
-            message = "Адрес " + str(ip_address) + " найден в базе данных"
+        if entries_updated > 0:
+            message = "Адрес " + str(ip_address) + f" обновлен. Обновлено {entries_updated} вхождений."
         else:
-            message = "Адрес " + str(ip_address) + " не найден в базе данных"
+            message = f"Информация об '{ip_address}' не найдена."
 
     return render_template('ip_search.html', message=message)
+
+
+# Search by IP-address page.
+@app.route('/mass_search', methods=['GET', 'POST'], endpoint='mass_search')
+@check_db_exists
+def mass_search():
+    message = None
+    if request.method == 'POST':
+        entries_updated = scanner.fetch_onions()
+
+        if entries_updated > 0:
+            message = f"Обновлено {entries_updated} вхождений."
+        else:
+            message = f"Информация не найдена."
+
+    return render_template('mass_search.html', message=message)
 
 
 # Search by filters page.
@@ -126,9 +137,10 @@ def filter_search():
 @app.route('/delete_record', methods=['POST'], endpoint='delete_record')
 def delete_record():
     if request.method == 'POST':
-        ip_addr = request.form.get('ip_addr')
-        # status = scanner.delete_host(ip_addr)
-        status = True
+        ip_addr = request.json.get('ip_addr')
+
+        status = scanner.delete_host(ip_addr)
+
         if status:
             return jsonify({"status": True, "message": "Запись удалена"})
         else:
@@ -142,8 +154,8 @@ def clear_tables():
     if request.method == 'GET':
         return render_template('clear_tables.html')
     if request.method == 'POST':
-        # status = scanner.clear_tables()
-        status = True
+        status = scanner.clear_tables()
+
         if status:
             return jsonify({"status": True, "message": "Таблицы удалены"})
         else:
@@ -157,7 +169,7 @@ def clear_ip():
     if request.method == 'GET':
         return render_template('clear_ip.html')
     if request.method == 'POST':
-        ip_address = request.form.get('ipAddress')
+        ip_address = request.json.get('ipAddress')
         status = scanner.delete_host(ip_address)
         if status:
             return jsonify({"status": True, "message": "IP-адрес удален"})
@@ -166,4 +178,4 @@ def clear_ip():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

@@ -69,7 +69,7 @@ class Onionoo:
 
     @staticmethod
     def details():
-        rq_str = f"{Onionoo.API_URL}/details?limit=4"
+        rq_str = f"{Onionoo.API_URL}/details?limit=50"
 
         return Onionoo._relays_by_url(rq_str)
 

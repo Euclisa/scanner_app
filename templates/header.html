@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shodan</title>
+    <title>Scanner</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="{{ url_for('index') }}">Shodan</a>
+    <a class="navbar-brand" href="{{ url_for('index') }}">Scanner</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
@@ -31,6 +31,7 @@
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownScanning">
                     <a class="dropdown-item" href="{{ url_for('ip_search') }}">По IP-адресу</a>
                     <a class="dropdown-item" href="{{ url_for('filter_search') }}">По фильтрам</a>
+                    <a class="dropdown-item" href="{{ url_for('mass_search') }}">Tor</a>
                 </div>
             </li>
             <li class="nav-item dropdown">
@@ -38,7 +39,6 @@
                     Удалить
                 </a>
                 <div class="dropdown-menu" aria-labelledby="navbarDropdownDelete">
-                    <a class="dropdown-item" href="{{ url_for('clear_ip') }}">IP-адрес</a>
                     <a class="dropdown-item" href="{{ url_for('clear_tables') }}">Таблицы</a>
                 </div>
             </li>

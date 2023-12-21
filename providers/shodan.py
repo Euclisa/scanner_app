@@ -1,12 +1,10 @@
-import shodan
 import json
 import logging
-from error import raise_error
-
+import requests
 
 class Shodan:
 
-    def __init__(self, api_key: str):
+    def __init__(self):
         self.logger = logging.getLogger('Shodan')
         self.logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler()  # Output logs to console
@@ -15,8 +13,11 @@ class Shodan:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-        self.api = shodan.Shodan(api_key)
+
+    def ip_info(self, ip_addr: str):
+        return requests.get(f"https://internetdb.shodan.io/{ip_addr}").json()
 
 
-    def ip_info(ip_addr: str):
-        return self.api.host(ip_addr)
+if __name__ == "__main__":
+    sh = SShodan()
+    print(sh.ip_info("185.146.232.243"))

@@ -1,6 +1,7 @@
 import requests
 import time
 import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import os
 import json
 import logging
@@ -8,6 +9,7 @@ import re
 from datetime import datetime
 from error import raise_error
 from providers.onionoo import Onionoo
+from providers.shodan import Shodan
 
 
 class Scanner:
@@ -110,10 +112,16 @@ class Scanner:
 
 
     def __init__(self):
-        logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(levelname)s - %(message)s')
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger('Scanner')
+        self.logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()  # Output logs to console
+        handler.setLevel(logging.DEBUG)  # Set the desired logging level for this handler
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
         self.onionoo = Onionoo()
+        self.shodan = Shodan()
 
         self._read_config()
 
@@ -150,7 +158,7 @@ class Scanner:
 
     
 
-    def _table_exists(self,table_name):
+    def _table_exists(self, table_name):
 
         with self.conn.cursor() as cur:
             cur.execute(
@@ -301,7 +309,7 @@ class Scanner:
                 raise_error(self.logger,f"Could not touch tor exit information for '{exit_addr}'.",e)
 
 
-    def fetch_onions(self):
+    def fetch_onions(self) -> int:
         relays = self.onionoo.details()
         event_id = self._create_tor_fetch_event()
 
@@ -309,16 +317,35 @@ class Scanner:
             self._update_onion_routing(relay,event_id)
 
         self.conn.commit()
+
+        return len(relays)
     
 
-    def fetch_host_info_from_tor(self, ip_addr):
-        pass
+    def fetch_host_info_from_tor(self, ip_addr: str) -> int:
+        relays = self.onionoo.ip_details(ip_addr)
+        if relays:
+            event_id = self._create_tor_fetch_event()
+
+            for relay in relays:
+                self._update_onion_routing(relay,event_id)
+
+            self.conn.commit()
+
+        return len(relays)
+    
+
+    def fetch_host_info_from_shodan(self, ip_addr: str) -> bool:
+        data = self.shodan.ip_info(ip_addr)
+        if data.get("detail") == "No information available":
+            return False
     
 
     def _get_superuser_connection(self):
         try:
             super_conn = psycopg2.connect(user=self.superuser_name,
                                         password=self.superuser_password)
+            super_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+            super_conn.autocommit = True
         except Exception as e:
             raise_error(self.logger,f"Connection to superuser of psql failed.",e)
         
@@ -360,7 +387,7 @@ class Scanner:
             try:
                 is_db_clean = self._check_db_clean()
             except:
-                msg = f"Failed to connect to database. Database is corrupted. Details: {str(e)}"
+                msg = f"Connected to database but it is corrupted. Details: {str(e)}"
                 return False
             
             if is_db_clean:
@@ -375,13 +402,21 @@ class Scanner:
 
     def drop_database(self):
         try:
-            with self._get_superuser_connection() as super_conn:
-                with super_conn.cursor() as cur:
-                    cur.execute("""DROP DATABASE %s""",(self.db_name,))
-                super_conn.commit()
+            if self.conn is None:
+                print("Not connected")
+                return False
+
+            self.conn.close()
+            self.conn = None
+            super_conn = self._get_superuser_connection()
+            with super_conn.cursor() as cur:
+                cur.execute(f"""DROP DATABASE {self.db_name};""")
+            super_conn.close()
+
 
         except Exception as e:
             msg = f"Failed to drop database {self.db_name}. Details: {str(e)}"
+            print(msg)
             return False
 
         return True
@@ -392,15 +427,17 @@ class Scanner:
             if self.db_initialized():
                 return True
 
-            with self._get_superuser_connection() as super_conn:
-                with super_conn.cursor() as cur:
-                    cur.execute("""CREATE DATABASE %s""",(self.db_name,))
-                super_conn.commit()
-            
-            self._setup_db()
+            super_conn = self._get_superuser_connection()
+            with super_conn.cursor() as cur:
+                cur.execute(f"""CREATE DATABASE {self.db_name} OWNER {self.db_user};""")
+            super_conn.close()
+            connection_status = self.db_connect()
+            if not connection_status:
+                raise RuntimeError("Successfuly created database but failed to connect.")
 
         except Exception as e:
             msg = f"Failed to create database {self.db_name}. Details: {str(e)}"
+            print(msg)
             return False
 
         return True
@@ -415,8 +452,6 @@ class Scanner:
 
         try:
             with self.conn.cursor() as cur:
-                cur.execute("BEGIN")
-    
                 sql = """DELETE FROM tor_exit_hosts WHERE exit_addr = %s OR or_addr = %s"""
                 cur.execute(sql,(ip_addr,ip_addr))
 
@@ -428,8 +463,6 @@ class Scanner:
 
                 sql = """DELETE FROM hosts WHERE ip_addr = %s"""
                 cur.execute(sql,(ip_addr,))
-
-                cur.execute("COMMIT")
             
             self.conn.commit()
 
@@ -446,6 +479,9 @@ class Scanner:
             with self.conn.cursor() as cur:
                 tables_str = ', '.join(Scanner.ALL_TABLES)
                 cur.execute(f"DROP TABLE {tables_str} CASCADE")
+                
+                self._setup_db()
+            self.conn.commit()
 
         except Exception as e:
             msg = f"Failed to delete '{ip_addr}'. Details: {str(e)}"
@@ -494,7 +530,9 @@ class Scanner:
             msg = f"Failed to select filtered. Details: {str(e)}"
             print(msg)
             return None
-                    
+
+
+scanner = Scanner()
 
 
 if __name__ == "__main__":
@@ -512,7 +550,6 @@ if __name__ == "__main__":
     def test_all_summary(scanner):
         print(scanner.get_all_summary())
 
-    scanner = Scanner()
     scanner.create_database()
     if(not scanner.db_connect()):
         print("Fail!")
