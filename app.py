@@ -101,17 +101,21 @@ def filter_search():
         onion_routing = request.form.get('tor')
         filtr.set_onion_routing_filter(onion_routing == 'on')
 
-        port = request.form.get('port')
-        if port:
-            filtr.add_port_to_filter(int(port))
-        
-        ip_addr = request.form.get('ipAddress')
-        if ip_addr:
-            filtr.add_ip_to_filter(ip_addr)
+        ip = request.form.get('ipAddressHidden')
+        port = request.form.get('portHidden')
+        country = request.form.get('countryHidden')
 
-        country = request.form.get('country')
-        if ip_addr:
-            filtr.add_country_to_filter(country)
+        for element in port.split(','):
+            if element:
+                filtr.add_port_to_filter(int(element))
+        
+        for element in ip.split(','):
+            if element:
+                filtr.add_ip_to_filter(element)
+
+        for element in country.split(','):
+            if element:
+                filtr.add_country_to_filter(element)
 
         results = scanner.get_filtered_summary(filtr)
 
