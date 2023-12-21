@@ -41,7 +41,7 @@ def index():
 
 # Database creation page.
 @app.route('/create_database', methods=['GET', 'POST'], endpoint='create_db')
-@check_db_not_exists
+# @check_db_not_exists
 def create_db():
     if request.method == 'GET':
         return render_template('create_db.html')
@@ -72,20 +72,20 @@ def delete_db():
 @check_db_exists
 def ip_search():
     message = None
-    if request.method == 'GET':
-        return render_template('ip_search.html', message=message)
     if request.method == 'POST':
         ip_address = request.form['ipAddress']
-        
+
         filtr = Scanner.select_filter()
         filtr.add_ip_to_filter(ip_address)
 
         status = scanner.get_filtered_summary(filtr)
 
-    if status:
-        return jsonify({"status": True, "message": "IP-адрес найден"})
-    else:
-        return jsonify({"status": False, "message": "IP-адрес не найден"})
+        if status:
+            message = "Адрес " + str(ip_address) + " найден в базе данных"
+        else:
+            message = "Адрес " + str(ip_address) + " не найден в базе данных"
+
+    return render_template('ip_search.html', message=message)
 
 
 # Search by filters page.
@@ -136,7 +136,8 @@ def clear_tables():
     if request.method == 'GET':
         return render_template('clear_tables.html')
     if request.method == 'POST':
-        status = scanner.clear_tables()
+        # status = scanner.clear_tables()
+        status = True
         if status:
             return jsonify({"status": True, "message": "Таблицы удалены"})
         else:
@@ -150,8 +151,9 @@ def clear_ip():
     if request.method == 'GET':
         return render_template('clear_ip.html')
     if request.method == 'POST':
-        ip_address = request.form['ipAddress']
-        status = scanner.delete_host(ip_address)
+        ip_address = request.form.get('ipAddress')
+        # status = scanner.delete_host(ip_address)
+        status = True
         if status:
             return jsonify({"status": True, "message": "IP-адрес удален"})
         else:

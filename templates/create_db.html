@@ -3,12 +3,54 @@
 {% block title %} Shodan {% endblock %}
 
 {% block content %}
-    <div class="container mt-5">
+
+    <script>
+        function performCreate() {
+            fetch('/create_database', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+
+            .then(response => response.json())
+
+            .then(data => {
+                console.log(data);
+                if (data.status) {
+                    showAlert('success', data.message);
+
+                } else {
+                    showAlert('danger', data.message);
+                }
+            })
+
+            .catch(error => {
+                showAlert('danger', `Произошла ошибка: ${error.message}`);
+            });
+        }
+
+        function showAlert(type, message) {
+            var alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-' + type;
+            alertDiv.innerHTML = message;
+
+            var container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+
+            setTimeout(function() {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+    </script>
+
+    <div class="container mt-5 align-items-center">
         <div class="row justify-content-center">
-            <div class="col-md-6">
+            <div class="col-md-6 text-center">
                 <h1 class="text-center">Создание базы данных</h1>
-                <form action="{{ url_for('create_db') }}" method="POST" class="text-center">
-                    <button type="submit" class="btn btn-primary">Создать базу данных</button>
+                <form id="form" method="post">
+                    <button type="button" onclick="performCreate()" class="btn btn-danger">Создать базу данных</button>
                 </form>
             </div>
         </div>
