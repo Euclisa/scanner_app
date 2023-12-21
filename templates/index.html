@@ -4,18 +4,26 @@
 
 {% block content %}
     {% if data %}
-        <ul>
-            {% for record in data %}
-                <li>
-                    <strong>IP Address:</strong> {{ record['ip_addr'] }}<br>
-                    <strong>Port:</strong> {{ record['ports'] }}<br>
-                    <strong>Country:</strong> {{ record['country'] }}<br>
-                    <strong>Nickname:</strong> {{ record['nickname'] }}<br>
-                    <strong>Contact:</strong> {{ record['running'] }}<br>
-                </li>
-                <br>
-            {% endfor %}
-        </ul>
+        <table class="table mt-3">
+            <thead>
+                <tr>
+                    <th scope="col">IP-адрес</th>
+                    <th scope="col">Порт</th>
+                    <th scope="col">Страна</th>
+                    <th scope="col">Onion Routing</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in data %}
+                    <tr>
+                        <td>{{ data['ip_addr'] }}</td>
+                        <td>{{ data['ports'] }}</td>
+                        <td>{{ data['country'] }}</td>
+                        <td>{{ "Да" if data['is_onion_routing'] else "Нет" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% else %}
         <p>Таблица пуста.</p>
     {% endif %}
